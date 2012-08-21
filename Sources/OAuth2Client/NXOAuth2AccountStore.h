@@ -100,5 +100,9 @@ typedef void(^NXOAuth2PreparedAuthorizationURLHandler)(NSURL *preparedURL);
 #pragma mark Handle OAuth Redirects
 
 - (BOOL)handleRedirectURL:(NSURL *)URL;
+    
+#pragma mark No idea how else to access the scope
+
+- (NXOAuth2Client *)pendingOAuthClientForAccountType:(NSString *)accountType;
 
 @end

@@ -169,13 +169,17 @@ NSString * const NXOAuth2ClientConnectionContextTokenRefresh = @"tokenRefresh";
 
 - (NSURL *)authorizationURLWithRedirectURL:(NSURL *)redirectURL;
 {
-    return [authorizeURL nxoauth2_URLByAddingParameters:[NSDictionary dictionaryWithObjectsAndKeys:
-                                                         @"code", @"response_type",
+    NSMutableDictionary *parameters =[NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                                         @"token", @"response_type",
                                                          clientId, @"client_id",
                                                          [redirectURL absoluteString], @"redirect_uri",
-                                                         nil]];
+                               nil];
+    
+    if (self.desiredScope) {
+        [parameters setObject:[[self.desiredScope allObjects] componentsJoinedByString:@" "] forKey:@"scope"];
+    }
+    return [authorizeURL nxoauth2_URLByAddingParameters:parameters];
 }
-
 
 // Web Server Flow only
 - (BOOL)openRedirectURL:(NSURL *)URL;

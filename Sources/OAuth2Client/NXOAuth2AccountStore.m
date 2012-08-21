@@ -22,6 +22,7 @@
 #import "NXOAuth2Connection.h"
 #import "NXOAuth2Account.h"
 #import "NXOAuth2Account+Private.h"
+#import "NXOAuth2AccessToken.h"
 
 #import "NXOAuth2AccountStore.h"
 
@@ -57,7 +58,6 @@ NSString * const kNXOAuth2AccountStoreAccountType = @"kNXOAuth2AccountStoreAccou
 @property (nonatomic, strong, readwrite) NSMutableDictionary *trustedCertificatesHandler;
 
 #pragma mark OAuthClient to AccountType Relation
-- (NXOAuth2Client *)pendingOAuthClientForAccountType:(NSString *)accountType;
 - (NSString *)accountTypeOfPendingOAuthClient:(NXOAuth2Client *)oauthClient;
 
 
@@ -67,6 +67,9 @@ NSString * const kNXOAuth2AccountStoreAccountType = @"kNXOAuth2AccountStoreAccou
 - (void)accountDidLoseAccessToken:(NSNotification *)aNotification;
 
 
+- (NSString *) getStringFromUrl: (NSString*) url needle:(NSString *) needle;
+- (NXOAuth2AccessToken*) accessTokenInURL:(NSURL*)url;
+    
 #pragma mark Keychain Support
 
 + (NSString *)keychainServiceName;
@@ -317,10 +320,51 @@ NSString * const kNXOAuth2AccountStoreAccountType = @"kNXOAuth2AccountStoreAccou
         if ([client openRedirectURL:fixedRedirectURL]) {
             return YES;
         }
+        // Implicit Flow
+        NXOAuth2AccessToken *token = [self accessTokenInURL:aURL];
+        if(token) {
+            client.accessToken = token;
+            // and assign it
+            [self oauthClientDidGetAccessToken:client];
+            return YES;
+        }
     }
     return NO;
 }
+                                          
+                                          
 
+#pragma mark Get access token in client side flow
+
+- (NXOAuth2AccessToken*) accessTokenInURL:(NSURL*)url {
+    // if the url contains an access token, return it
+    NSString *q = [url absoluteString];
+    NSString *token = [self getStringFromUrl:q needle:@"access_token="];
+    NSString *expTime = [self getStringFromUrl:q needle:@"expires_in="];
+    
+    if (!token) {
+        return nil;
+    }
+    
+    NXOAuth2AccessToken *tokenObject = [[NXOAuth2AccessToken alloc] initWithAccessToken:token refreshToken:nil expiresAt:[NSDate dateWithTimeIntervalSinceNow:[expTime integerValue]]];
+    
+    return tokenObject;
+}
+
+- (NSString *) getStringFromUrl: (NSString*) url needle:(NSString *) needle {
+  NSString * str = nil;
+  NSRange start = [url rangeOfString:needle];
+  if (start.location != NSNotFound) {
+    NSRange end = [[url substringFromIndex:start.location+start.length] rangeOfString:@"&"];
+    NSUInteger offset = start.location+start.length;
+    str = end.location == NSNotFound
+    ? [url substringFromIndex:offset]
+    : [url substringWithRange:NSMakeRange(offset, end.location)];  
+    str = [str stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding]; 
+  }
+  
+  return str;
+}
 
 #pragma mark OAuthClient to AccountType Relation
 
@@ -397,7 +441,8 @@ NSString * const kNXOAuth2AccountStoreAccountType = @"kNXOAuth2AccountStoreAccou
     NSString *accountType;
     @synchronized (self.pendingOAuthClients) {
         accountType = [self accountTypeOfPendingOAuthClient:client];
-        [self.pendingOAuthClients removeObjectForKey:accountType];
+        if(accountType)
+            [self.pendingOAuthClients removeObjectForKey:accountType];
     }
     
     NXOAuth2Account *account = [[NXOAuth2Account alloc] initAccountWithOAuthClient:client accountType:accountType];
