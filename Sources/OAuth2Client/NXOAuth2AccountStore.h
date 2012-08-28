@@ -105,4 +105,7 @@ typedef void(^NXOAuth2PreparedAuthorizationURLHandler)(NSURL *preparedURL);
 
 - (NXOAuth2Client *)pendingOAuthClientForAccountType:(NSString *)accountType;
 
+#pragma mark Logout Functionality / Removing the access tokens
+- (void) removeAccessTokenForAccount:(NXOAuth2Account*)account;
+
 @end

@@ -366,6 +366,27 @@ NSString * const kNXOAuth2AccountStoreAccountType = @"kNXOAuth2AccountStoreAccou
   return str;
 }
 
+#pragma mark Removing access tokens for logout
+- (void) removeAccessTokenForAccount:(NXOAuth2Account*)account {
+    // delete the keychain
+    [NXOAuth2AccountStore removeFromDefaultKeychain];
+    
+    // remove from the accounts dict
+    [self.accountsDict removeObjectForKey:account.identifier];
+    
+    // remove from the pending outh clients
+    @synchronized (self.pendingOAuthClients) {
+        [self.pendingOAuthClients removeObjectForKey:account.accountType];
+    }
+    
+    // remove the token alltogehter
+    account.oauthClient.accessToken = nil;
+    
+    [[NSNotificationCenter defaultCenter] postNotificationName:NXOAuth2AccountStoreAccountsDidChangeNotification
+                                                        object:self
+                                                      userInfo:nil];
+}
+
 #pragma mark OAuthClient to AccountType Relation
 
 - (NXOAuth2Client *)pendingOAuthClientForAccountType:(NSString *)accountType;
